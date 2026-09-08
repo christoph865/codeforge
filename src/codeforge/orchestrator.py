@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from codeforge.agents.implementation import ImplementationAgent, ImplementationResult
 from codeforge.agents.intake import IntakeAgent, IntakeResult
 from codeforge.agents.specification import SpecificationAgent, SpecificationResult
+from codeforge.audit import AuditLogger, get_audit_logger
 from codeforge.config import Settings, get_settings
 from codeforge.gitlab_client import GitLabClient
 from codeforge.jira_feedback import JiraFeedbackClient, LoggingJiraFeedback
@@ -30,15 +31,21 @@ class Orchestrator:
         gitlab_client: GitLabClient | None = None,
         llm_client: LLMClient | None = None,
         jira_feedback: JiraFeedbackClient | None = None,
+        audit_logger: AuditLogger | None = None,
     ):
         self._settings = settings or get_settings()
-        self._gitlab = gitlab_client or GitLabClient(settings=self._settings)
+        self._audit = audit_logger or get_audit_logger(self._settings)
+        self._gitlab = gitlab_client or GitLabClient(settings=self._settings, audit_logger=self._audit)
         self._llm = llm_client or get_llm_client(self._settings)
-        self._jira = jira_feedback or LoggingJiraFeedback(self._settings)
+        self._jira = jira_feedback or LoggingJiraFeedback(self._settings, audit_logger=self._audit)
 
-        self._intake_agent = IntakeAgent(self._gitlab, settings=self._settings)
-        self._spec_agent = SpecificationAgent(self._llm, self._gitlab, settings=self._settings)
-        self._impl_agent = ImplementationAgent(self._llm, self._gitlab, settings=self._settings)
+        self._intake_agent = IntakeAgent(self._gitlab, settings=self._settings, audit_logger=self._audit)
+        self._spec_agent = SpecificationAgent(
+            self._llm, self._gitlab, settings=self._settings, audit_logger=self._audit
+        )
+        self._impl_agent = ImplementationAgent(
+            self._llm, self._gitlab, settings=self._settings, audit_logger=self._audit
+        )
 
     def run(self, issue_iid: int, *, jira_story_key: str | None = None) -> PipelineResult:
         story_key = jira_story_key or f"GITLAB-{issue_iid}"
