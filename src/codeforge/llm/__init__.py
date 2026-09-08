@@ -11,4 +11,4 @@ def get_llm_client(settings: Settings | None = None) -> LLMClient:
     return ClaudeClient(api_key=settings.anthropic_api_key, model=settings.claude_model)
 
 
-__all__ = ["LLMClient", "LLMResponse", "ToolCall", "ClaudeClient", "get_llm_client"]
+__all__ = ["ClaudeClient", "LLMClient", "LLMResponse", "ToolCall", "get_llm_client"]
