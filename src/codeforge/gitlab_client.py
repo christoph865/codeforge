@@ -116,10 +116,17 @@ class GitLabClient:
         commit_message: str,
         files: dict[str, str],
         default_action: str = "create",
+        actions_by_path: dict[str, str] | None = None,
     ) -> ActionResult:
-        """`default_action` is "create" for new files, "update" when overwriting existing ones."""
+        """`default_action` applies unless a path has an override in `actions_by_path`
+        (e.g. "update" for a file that already exists vs "create" for a new one)."""
+        overrides = actions_by_path or {}
         actions = [
-            {"action": default_action, "file_path": path, "content": content}
+            {
+                "action": overrides.get(path, default_action),
+                "file_path": path,
+                "content": content,
+            }
             for path, content in files.items()
         ]
         self._log(
