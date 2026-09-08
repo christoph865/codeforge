@@ -1,0 +1,28 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# --- Secrets / env ---
+.env
+.env.*
+!.env.example
+*.token
+
+# --- Logs / runtime artifacts ---
+audit.log
+*.log
+.codeforge/
+
+# --- OS / editor ---
+.DS_Store
+.vscode/*
+!.vscode/settings.json
