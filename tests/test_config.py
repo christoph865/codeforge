@@ -5,7 +5,7 @@ def test_defaults_are_safe():
     s = Settings(_env_file=None)
     assert s.dry_run is True
     assert s.gitlab_url == "https://gitlab.com"
-    assert s.claude_model == "claude-sonnet-4-5-20250929"
+    assert s.claude_model == "claude-sonnet-5"
     assert s.max_llm_calls_per_run == 20
     assert s.max_retries == 3
     assert s.request_timeout_seconds == 30.0

@@ -11,7 +11,10 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     anthropic_api_key: str = ""
-    claude_model: str = "claude-sonnet-4-5-20250929"
+    # "claude-sonnet-5" is the current model alias as of writing (verified against
+    # platform.claude.com/docs). Re-check docs before relying on this if it's been a while —
+    # Anthropic retires/renames models on a schedule.
+    claude_model: str = "claude-sonnet-5"
     # Caps LLM calls per pipeline run/server session as a cost/abuse guardrail.
     max_llm_calls_per_run: int = 20
 
