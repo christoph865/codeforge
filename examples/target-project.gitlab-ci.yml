@@ -1,0 +1,42 @@
+# Example .gitlab-ci.yml for a *target* project that receives Merge Requests from codeforge's
+# Implementation Agent. This is what the job description means by "runs CI/CD pipelines" — GitLab
+# runs a project's own pipeline automatically against every MR, including AI-generated ones, so a
+# failing scaffold is caught before a human ever reviews it.
+#
+# This file is not used by codeforge itself; copy it (or something like it) into a target repo.
+
+stages:
+  - lint
+  - test
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+cache:
+  paths:
+    - .cache/pip
+
+default:
+  image: python:3.11-slim
+  before_script:
+    - pip install -e ".[dev]"
+
+lint:
+  stage: lint
+  script:
+    - ruff check .
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
+
+test:
+  stage: test
+  script:
+    - pytest -q --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'

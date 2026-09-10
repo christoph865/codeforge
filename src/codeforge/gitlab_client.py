@@ -5,6 +5,7 @@ needed even in dry-run mode to demo the pipeline end to end.
 """
 from __future__ import annotations
 
+import posixpath
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -12,6 +13,18 @@ import gitlab
 
 from codeforge.audit import AuditLogger, get_audit_logger
 from codeforge.config import Settings, get_settings
+
+
+class UnsafeFilePathError(ValueError):
+    """Raised when a generated file path would escape the repo root or is absolute."""
+
+
+def _assert_safe_repo_path(path: str) -> None:
+    if not path or path.startswith(("/", "~")) or "\x00" in path:
+        raise UnsafeFilePathError(f"unsafe file path: {path!r}")
+    normalized = posixpath.normpath(path)
+    if normalized == ".." or normalized.startswith("../"):
+        raise UnsafeFilePathError(f"path escapes the repository root: {path!r}")
 
 
 @dataclass
@@ -44,7 +57,10 @@ class GitLabClient:
         self._settings = settings or get_settings()
         self._audit = audit_logger or get_audit_logger(self._settings)
         self._gl = gl or gitlab.Gitlab(
-            self._settings.gitlab_url, private_token=self._settings.gitlab_token
+            self._settings.gitlab_url,
+            private_token=self._settings.gitlab_token,
+            timeout=self._settings.request_timeout_seconds,
+            retry_transient_errors=True,
         )
         self._project = None
 
@@ -120,6 +136,13 @@ class GitLabClient:
     ) -> ActionResult:
         """`default_action` applies unless a path has an override in `actions_by_path`
         (e.g. "update" for a file that already exists vs "create" for a new one)."""
+        try:
+            for path in files:
+                _assert_safe_repo_path(path)
+        except UnsafeFilePathError as exc:
+            self._log("commit_files_rejected", branch=branch, reason=str(exc))
+            raise
+
         overrides = actions_by_path or {}
         actions = [
             {

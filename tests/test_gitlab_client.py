@@ -1,4 +1,6 @@
-from codeforge.gitlab_client import GitLabClient
+import pytest
+
+from codeforge.gitlab_client import GitLabClient, UnsafeFilePathError
 
 
 def test_get_issue_context_reads_real_data(gitlab_client, fake_issue):
@@ -11,6 +13,26 @@ def test_get_issue_context_reads_real_data(gitlab_client, fake_issue):
 def test_get_repo_file_existing_and_missing(gitlab_client):
     assert gitlab_client.get_repo_file("README.md", ref="main") == "# Demo project\nConventions..."
     assert gitlab_client.get_repo_file("does/not/exist.py", ref="main") is None
+
+
+def test_constructs_real_sdk_with_timeout_and_retry_enabled(settings, audit_logger, monkeypatch):
+    captured = {}
+
+    class FakeGitlabCtor:
+        def __init__(self, url, private_token=None, timeout=None, retry_transient_errors=None):
+            captured.update(
+                url=url, timeout=timeout, retry_transient_errors=retry_transient_errors
+            )
+            self.projects = None
+
+    monkeypatch.setattr("codeforge.gitlab_client.gitlab.Gitlab", FakeGitlabCtor)
+    GitLabClient(settings=settings, audit_logger=audit_logger)
+
+    assert captured == {
+        "url": settings.gitlab_url,
+        "timeout": settings.request_timeout_seconds,
+        "retry_transient_errors": True,
+    }
 
 
 def test_dry_run_ensure_branch_does_not_touch_project(gitlab_client, fake_project):
@@ -29,6 +51,26 @@ def test_dry_run_open_merge_request_does_not_touch_project(gitlab_client, fake_p
     result = gitlab_client.open_merge_request("feature/x", "main", "title", "desc")
     assert result.dry_run is True
     assert fake_project.mergerequests.created == []
+
+
+@pytest.mark.parametrize(
+    "unsafe_path",
+    [
+        "/etc/passwd",
+        "../../etc/passwd",
+        "src/../../outside.py",
+        "~/secrets.py",
+    ],
+)
+def test_commit_files_rejects_unsafe_paths(gitlab_client, fake_project, unsafe_path):
+    with pytest.raises(UnsafeFilePathError):
+        gitlab_client.commit_files("feature/x", "msg", {unsafe_path: "pass\n"})
+    assert fake_project.commits.commits == []
+
+
+def test_commit_files_allows_normal_relative_paths(gitlab_client, fake_project):
+    result = gitlab_client.commit_files("feature/x", "msg", {"src/api/new_file.py": "pass\n"})
+    assert result.dry_run is True
 
 
 def test_dry_run_add_issue_comment_and_set_labels(gitlab_client, fake_project, fake_issue):

@@ -10,22 +10,25 @@ from mcp.server.mcpserver import MCPServer
 
 from codeforge.agents.implementation import ImplementationAgent
 from codeforge.agents.intake import IntakeAgent
-from codeforge.agents.specification import SpecificationAgent, TechnicalSpec
+from codeforge.agents.specification import SpecificationAgent
 from codeforge.config import get_settings
 from codeforge.gitlab_client import GitLabClient
 from codeforge.llm import get_llm_client
+from codeforge.llm.base import LLMClient
 from codeforge.orchestrator import Orchestrator
 
 mcp_server = MCPServer("codeforge")
-
-# Specs drafted during this server session, so `implement` uses the exact spec a human
-# approved rather than silently re-asking the LLM (which could produce a different result).
-_spec_cache: dict[int, TechnicalSpec] = {}
 
 
 @lru_cache
 def _gitlab_client() -> GitLabClient:
     return GitLabClient(settings=get_settings())
+
+
+@lru_cache
+def _llm_client() -> LLMClient:
+    # Shared (and budgeted) across every agent for the lifetime of the server process.
+    return get_llm_client(get_settings())
 
 
 @lru_cache
@@ -35,12 +38,12 @@ def _intake_agent() -> IntakeAgent:
 
 @lru_cache
 def _spec_agent() -> SpecificationAgent:
-    return SpecificationAgent(get_llm_client(get_settings()), _gitlab_client(), settings=get_settings())
+    return SpecificationAgent(_llm_client(), _gitlab_client(), settings=get_settings())
 
 
 @lru_cache
 def _impl_agent() -> ImplementationAgent:
-    return ImplementationAgent(get_llm_client(get_settings()), _gitlab_client(), settings=get_settings())
+    return ImplementationAgent(_llm_client(), _gitlab_client(), settings=get_settings())
 
 
 @mcp_server.tool()
@@ -63,7 +66,6 @@ def draft_spec(issue_iid: int) -> dict[str, Any]:
     """Draft a technical spec for a GitLab issue and post it as an issue comment for approval."""
     intake = _intake_agent().run(issue_iid)
     result = _spec_agent().run(intake)
-    _spec_cache[issue_iid] = result.spec
     return result.spec.model_dump()
 
 
@@ -80,7 +82,8 @@ def implement(issue_iid: int) -> dict[str, Any]:
         return {"status": "blocked", "reason": "spec not yet approved by a human reviewer"}
 
     intake = _intake_agent().run(issue_iid)
-    spec = _spec_cache.get(issue_iid)
+    # Recovered from the issue thread itself so it's exactly what was approved, not a fresh re-draft.
+    spec = _spec_agent().get_posted_spec(issue_iid)
     if spec is None:
         spec = _spec_agent().run(intake, post_to_issue=False).spec
 

@@ -1,5 +1,7 @@
 # codeforge
 
+![CI](https://github.com/christoph865/codeforge/actions/workflows/ci.yml/badge.svg)
+
 **An automated spec-to-code AI agent chain**: a validated backlog item goes in, a reviewed Merge Request comes out.
 
 This project is a portfolio implementation of the "Intake → Specification → Implementation" agent
@@ -52,7 +54,12 @@ respects `DRY_RUN`, uses a scoped access token, and logs every action to an appe
 - **MCP server:** exposes the same pipeline actions (`fetch_issue`, `draft_spec`, `open_merge_request`, ...)
   as MCP tools, so any MCP-compatible client (Claude Desktop, custom agents) can drive the pipeline.
 - **Guardrails:** scoped tokens only, dry-run default, protected-branch awareness, mandatory human
-  approval gate between spec and implementation, full audit logging.
+  approval gate between spec and implementation, full audit logging, a per-run LLM call budget, and
+  path-traversal/absolute-path rejection on any file the Implementation Agent tries to write.
+- **Reliability:** both the Claude and GitLab clients use a configurable request timeout and retry
+  transient errors (connection failures, 429s, 5xx) with backoff (`REQUEST_TIMEOUT_SECONDS`, `MAX_RETRIES`).
+- **CI:** GitHub Actions runs `ruff check` + `pytest` on every push/PR (see badge above); an example
+  `.gitlab-ci.yml` for *target* projects receiving codeforge's MRs is in [examples/](examples/target-project.gitlab-ci.yml).
 
 ## Project structure
 
@@ -118,8 +125,8 @@ pytest
 ```
 
 GitLab and the LLM are fully faked in `tests/conftest.py` — the suite runs offline, with no real API
-calls, and covers dry-run vs. live-write behavior, the approval gate, and per-file create/update
-detection.
+calls, and covers dry-run vs. live-write behavior, the approval gate, per-file create/update
+detection, the LLM call budget, unsafe path rejection, and retry/timeout wiring.
 
 ## Security notes
 
@@ -130,6 +137,12 @@ detection.
   personal admin tokens.
 - All agent actions (spec generation, branch creation, commits, MR creation, comments) are written to
   an append-only audit log for traceability.
+- Generated file paths are validated before every commit: absolute paths, `~`, and `../` traversal
+  are rejected (`UnsafeFilePathError`), so a hallucinating or compromised LLM response can't write
+  outside the target repository.
+- LLM calls are capped per pipeline run/session (`MAX_LLM_CALLS_PER_RUN`) as a cost and abuse guardrail.
+- The Implementation Agent uses the exact spec a human approved (recovered from the issue comment
+  itself via a hidden marker) rather than an in-memory cache or a fresh, possibly different, re-draft.
 
 ## Skills this project demonstrates
 
@@ -140,5 +153,6 @@ detection.
 | Tool calling / function calling | Structured `submit_technical_spec` / `submit_code_scaffold` tools, schema-driven via Pydantic |
 | MCP server implementation | [mcp_server.py](src/codeforge/mcp_server.py) |
 | GitLab API integration (branches, commits, MRs, issues) | [gitlab_client.py](src/codeforge/gitlab_client.py) |
-| Governance & security guardrails | Scoped tokens, dry-run default, human approval gate, audit logging |
+| GitLab CI/CD | [.github/workflows/ci.yml](.github/workflows/ci.yml) (this repo), [examples/target-project.gitlab-ci.yml](examples/target-project.gitlab-ci.yml) (target projects) |
+| Governance & security guardrails | Scoped tokens, dry-run default, human approval gate, audit logging, path-traversal validation, LLM call budget |
 

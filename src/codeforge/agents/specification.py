@@ -4,6 +4,7 @@ approval label (nothing proceeds automatically).
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 from pydantic import BaseModel, Field
@@ -20,6 +21,10 @@ AGENT_NAME = "specification-agent"
 APPROVAL_LABEL = "codeforge::spec-approved"
 
 _SUBMIT_SPEC_TOOL_NAME = "submit_technical_spec"
+
+# Hidden in the posted comment so the exact approved spec can be recovered later (e.g. by the MCP
+# server across separate tool calls) instead of trusting an in-memory cache or re-asking the LLM.
+_SPEC_MARKER_PATTERN = re.compile(r"<!-- codeforge:spec:v1:(.*?) -->", re.DOTALL)
 
 _SYSTEM_PROMPT = """You are the Specification Agent in an automated GitLab development pipeline.
 Given a GitLab issue and repository context, derive a precise, minimal technical specification.
@@ -63,6 +68,7 @@ class TechnicalSpec(BaseModel):
             f"\n---\n_Add the `{APPROVAL_LABEL}` label to this issue to approve this spec "
             "and let the Implementation Agent proceed._"
         )
+        md += f"\n\n<!-- codeforge:spec:v1:{self.model_dump_json()} -->"
         return md
 
 
@@ -111,6 +117,17 @@ class SpecificationAgent:
         """Approval gate: a human must add APPROVAL_LABEL before the Implementation Agent runs."""
         issue = self._gitlab.get_issue_context(issue_iid)
         return APPROVAL_LABEL in issue.labels
+
+    def get_posted_spec(self, issue_iid: int) -> TechnicalSpec | None:
+        """Recover the most recently posted spec straight from the issue thread, so the
+        Implementation Agent builds exactly what a human approved rather than a fresh
+        (possibly different) LLM re-draft."""
+        issue = self._gitlab.get_issue_context(issue_iid)
+        for note in reversed(issue.notes):
+            match = _SPEC_MARKER_PATTERN.search(note)
+            if match:
+                return TechnicalSpec.model_validate_json(match.group(1))
+        return None
 
     def _draft_spec(self, intake: IntakeResult) -> TechnicalSpec:
         tool = {

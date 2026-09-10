@@ -12,10 +12,17 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
     claude_model: str = "claude-sonnet-4-5-20250929"
+    # Caps LLM calls per pipeline run/server session as a cost/abuse guardrail.
+    max_llm_calls_per_run: int = 20
 
     gitlab_url: str = "https://gitlab.com"
     gitlab_token: str = ""
     gitlab_project_id: str = ""
+
+    # Applied to both the Claude and GitLab clients: request timeout and retries on
+    # transient errors (connection errors, 429s, 5xx).
+    request_timeout_seconds: float = 30.0
+    max_retries: int = 3
 
     # Safety default: no writes reach GitLab until explicitly disabled.
     dry_run: bool = True

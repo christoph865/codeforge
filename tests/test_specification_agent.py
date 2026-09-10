@@ -53,6 +53,28 @@ def test_is_approved_reflects_label(gitlab_client, settings, audit_logger, fake_
     assert agent.is_approved(fake_project.issue.iid) is True
 
 
+def test_get_posted_spec_recovers_the_exact_approved_spec(
+    gitlab_client, settings, audit_logger, fake_project, fake_llm_factory
+):
+    intake = _intake(gitlab_client, settings, audit_logger, fake_project.issue.iid)
+    settings.dry_run = False  # the marker only ends up in the fake project on a real write
+    agent = SpecificationAgent(
+        fake_llm_factory({"submit_technical_spec": SPEC_PAYLOAD}),
+        gitlab_client,
+        settings=settings,
+        audit_logger=audit_logger,
+    )
+
+    assert agent.get_posted_spec(fake_project.issue.iid) is None  # nothing posted yet
+
+    agent.run(intake)
+
+    recovered = agent.get_posted_spec(fake_project.issue.iid)
+    assert recovered is not None
+    assert recovered.summary == SPEC_PAYLOAD["summary"]
+    assert recovered.affected_components == SPEC_PAYLOAD["affected_components"]
+
+
 def test_raises_if_model_never_calls_the_tool(gitlab_client, settings, audit_logger, fake_project):
     class NoToolLLM(LLMClient):
         def create_message(self, **kwargs):

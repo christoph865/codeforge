@@ -9,10 +9,19 @@ from codeforge.llm.base import LLMClient, LLMResponse, ToolCall
 
 
 class ClaudeClient(LLMClient):
-    def __init__(self, api_key: str, model: str):
+    def __init__(
+        self,
+        api_key: str,
+        model: str,
+        timeout_seconds: float = 30.0,
+        max_retries: int = 3,
+    ):
         if not api_key:
             raise ValueError("ANTHROPIC_API_KEY is not set (check your .env)")
-        self._client = anthropic.Anthropic(api_key=api_key)
+        # anthropic's SDK already retries connection errors, 429s, and 5xx with backoff.
+        self._client = anthropic.Anthropic(
+            api_key=api_key, timeout=timeout_seconds, max_retries=max_retries
+        )
         self._model = model
 
     def create_message(
