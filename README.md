@@ -142,15 +142,3 @@ detection.
 | GitLab API integration (branches, commits, MRs, issues) | [gitlab_client.py](src/codeforge/gitlab_client.py) |
 | Governance & security guardrails | Scoped tokens, dry-run default, human approval gate, audit logging |
 
-## Project status / roadmap
-
-- [x] Project scaffolding
-- [x] Config + Claude client + audit log
-- [x] GitLab client wrapper (dry-run mode)
-- [x] Intake Agent
-- [x] Specification Agent
-- [x] Implementation Agent
-- [x] Orchestrator CLI + feedback loop
-- [x] MCP server
-- [x] Tests
-- [x] Docs polish
