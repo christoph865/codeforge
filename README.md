@@ -49,7 +49,9 @@ respects `DRY_RUN`, uses a scoped access token, and logs every action to an appe
 ## Architecture
 
 - **Language:** Python 3.11+
-- **LLM:** Anthropic Claude (tool calling / function calling), provider interface is swappable.
+- **LLM:** Anthropic Claude by default; Google Gemini is a built-in alternative (`LLM_PROVIDER=gemini`)
+  with a genuine free tier, useful for testing without paying. Both implement the same
+  `LLMClient` interface, so agents don't change when you switch providers.
 - **GitLab integration:** `python-gitlab`, scoped token, dry-run mode by default.
 - **MCP server:** exposes the same pipeline actions (`fetch_issue`, `draft_spec`, `open_merge_request`, ...)
   as MCP tools, so any MCP-compatible client (Claude Desktop, custom agents) can drive the pipeline.
@@ -87,7 +89,10 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e ".[dev]"
 cp .env.example .env
-# edit .env with your ANTHROPIC_API_KEY and (optionally) a real GitLab project + scoped token
+# Claude (default): set ANTHROPIC_API_KEY (paid, no free tier).
+# Or Gemini (free): set LLM_PROVIDER=gemini and GEMINI_API_KEY (get one at
+# https://aistudio.google.com/apikey, no billing required).
+# Either way, also set a real GitLab project + scoped token if you want to run for real.
 ```
 
 ## Usage
