@@ -7,7 +7,7 @@ def test_defaults_are_safe():
     assert s.gitlab_url == "https://gitlab.com"
     assert s.llm_provider == "claude"
     assert s.claude_model == "claude-sonnet-5"
-    assert s.gemini_model == "gemini-2.5-flash"
+    assert s.gemini_model == "gemini-3.6-flash"
     assert s.max_llm_calls_per_run == 20
     assert s.max_retries == 3
     assert s.request_timeout_seconds == 30.0

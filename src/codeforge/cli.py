@@ -5,6 +5,7 @@ from __future__ import annotations
 import anthropic
 import gitlab
 import typer
+from google.genai import errors as genai_errors
 from rich.console import Console
 
 from codeforge.gitlab_client import UnsafeFilePathError
@@ -31,6 +32,9 @@ def run_issue(
         raise typer.Exit(code=1) from exc
     except anthropic.AnthropicError as exc:
         console.print(f"[red]Claude API error:[/red] {exc}")
+        raise typer.Exit(code=1) from exc
+    except genai_errors.APIError as exc:
+        console.print(f"[red]Gemini API error:[/red] {exc}")
         raise typer.Exit(code=1) from exc
     except LLMBudgetExceeded as exc:
         console.print(f"[red]{exc}[/red]")

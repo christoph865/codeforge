@@ -2,6 +2,7 @@ from types import SimpleNamespace
 
 import anthropic
 import gitlab
+from google.genai import errors as genai_errors
 from typer.testing import CliRunner
 
 from codeforge.agents.specification import SpecificationResult, TechnicalSpec
@@ -84,6 +85,16 @@ def test_run_issue_handles_claude_errors_cleanly(monkeypatch):
 
     assert outcome.exit_code == 1
     assert "Claude API error" in outcome.stdout
+
+
+def test_run_issue_handles_gemini_errors_cleanly(monkeypatch):
+    error = genai_errors.APIError(404, {"error": {"message": "model not found"}}, None)
+    monkeypatch.setattr("codeforge.cli.Orchestrator", lambda: _FakeOrchestrator(exc=error))
+
+    outcome = runner.invoke(app, ["run-issue", "42"])
+
+    assert outcome.exit_code == 1
+    assert "Gemini API error" in outcome.stdout
 
 
 def test_run_issue_handles_budget_exceeded_cleanly(monkeypatch):

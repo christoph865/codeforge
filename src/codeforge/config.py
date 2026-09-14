@@ -22,7 +22,10 @@ class Settings(BaseSettings):
     claude_model: str = "claude-sonnet-5"
 
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
+    # Verified live against the Gemini API on 2026-09-14: gemini-2.5-flash was retired for new
+    # users, gemini-3.6-flash is the currently recommended replacement. Models churn — recheck
+    # via the API error message or https://ai.google.dev/gemini-api/docs/models if this is stale.
+    gemini_model: str = "gemini-3.6-flash"
 
     # Caps LLM calls per pipeline run/server session as a cost/abuse guardrail.
     max_llm_calls_per_run: int = 20
