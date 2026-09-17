@@ -10,6 +10,11 @@ GitLab's CI/CD and code review workflow.
 
 > ⚠️ **Status:** portfolio/demo project. Defaults to `DRY_RUN=true` so it is always safe to run
 > without touching a real GitLab project.
+>
+> ✅ **Verified end-to-end against a real GitLab project**: a real technical spec was drafted and
+> posted as an issue comment via Gemini, a human approval label gated the next stage, and the
+> Implementation Agent opened a real Merge Request with a generated code scaffold + unit test.
+> Full write-up: [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md).
 
 ## Why this exists
 
@@ -129,9 +134,9 @@ Exposed tools: `fetch_issue`, `draft_spec`, `check_spec_approval`, `implement`, 
 pytest
 ```
 
-GitLab and the LLM are fully faked in `tests/conftest.py` — the suite runs offline, with no real API
-calls, and covers dry-run vs. live-write behavior, the approval gate, per-file create/update
-detection, the LLM call budget, unsafe path rejection, and retry/timeout wiring.
+GitLab and the LLM are fully faked in `tests/conftest.py` — the suite (45 tests) runs offline, with
+no real API calls, and covers dry-run vs. live-write behavior, the approval gate, per-file
+create/update detection, the LLM call budget, unsafe path rejection, and retry/timeout wiring.
 
 ## Security notes
 
@@ -153,7 +158,7 @@ detection, the LLM call budget, unsafe path rejection, and retry/timeout wiring.
 
 | Area | Where |
 |---|---|
-| LLM integration (Anthropic Claude) | [llm/claude.py](src/codeforge/llm/claude.py) |
+| LLM integration (Anthropic Claude + Google Gemini) | [llm/claude.py](src/codeforge/llm/claude.py), [llm/gemini.py](src/codeforge/llm/gemini.py) |
 | Prompt engineering for code generation | System prompts in [specification.py](src/codeforge/agents/specification.py), [implementation.py](src/codeforge/agents/implementation.py) |
 | Tool calling / function calling | Structured `submit_technical_spec` / `submit_code_scaffold` tools, schema-driven via Pydantic |
 | MCP server implementation | [mcp_server.py](src/codeforge/mcp_server.py) |
