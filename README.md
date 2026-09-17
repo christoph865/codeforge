@@ -11,7 +11,7 @@ GitLab's CI/CD and code review workflow.
 > ⚠️ **Status:** portfolio/demo project. Defaults to `DRY_RUN=true` so it is always safe to run
 > without touching a real GitLab project.
 >
-> ✅ **Verified end-to-end against a real GitLab project**: a real technical spec was drafted and
+> **Verified end-to-end against a real GitLab project**: a real technical spec was drafted and
 > posted as an issue comment via Gemini, a human approval label gated the next stage, and the
 > Implementation Agent opened a real Merge Request with a generated code scaffold + unit test.
 > Full write-up: [docs/PROJECT_OVERVIEW.md](docs/PROJECT_OVERVIEW.md).
